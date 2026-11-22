@@ -10,20 +10,19 @@
 // =====================================================
 //
 // HOW TO RUN (Serial Monitor, 115200 baud, "Newline")
-//   1. Put the car near the sensor end (about 10 to 12 cm reading).
+//   1. Put the car near the sensor end (about 8 to 12 cm reading).
 //   2. Type  P   or  PD   or  PID   (selects the controller)
-//   3. Type  START
-//   4. The car is driven to the centre. When it stays within +/-2 cm
-//      of the centre and almost still for 3 s, the Arduino prints STABLE,
-//      levels the beam and ends the trial. If it never settles, the trial
-//      ends after 40 s with TIMEOUT (this is what P will do).
-//   5. A SUMMARY line is printed at the end of every trial.
-//   Type STOP at any time to stop.
+//   3. Type  START. The controller runs until YOU type STOP.
+//      Nothing in the code stops it, levels the beam or holds the car:
+//      the motion you see is purely the controller's response.
+//   4. If the car settles (within +/-2 cm, slower than 2 cm/s, for 3 s) the
+//      Arduino just prints "# SETTLED at t = ..." and keeps controlling.
+//   5. Type STOP. A SUMMARY line is printed (overshoot, settling time, final error).
 //
 // Other commands (optional):
 //   LEVEL 92.5   servo angle that makes the beam level
 //   CENTRE 21.88 sensor reading with the car over the pivot (cm)
-//   KP 4  KD 2.1  KI 0.8  KICK 7   change the gains of the selected controller
+//   KP 4  KD 2.1  KI 0.8  KICK 3   change the gains of the selected controller
 //   SHOW         print the current settings
 
 // ---------------- Hardware ----------------
@@ -47,8 +46,7 @@ const float POS_MAX = 40.0;
 // ---------------- Stability requirement ----------------
 const float STABLE_BAND_CM   = 2.0;     // within +/-2 cm of the centre
 const float STABLE_SPEED_CMS = 2.0;     // and moving slower than 2 cm/s (smoothed speed)
-const unsigned long STABLE_HOLD_MS = 3000;   // for 3 s continuously
-const unsigned long MAX_RUN_MS     = 40000;  // give up after 40 s (TIMEOUT)
+const unsigned long STABLE_HOLD_MS = 3000;   // for 3 s continuously (measured only, never forces anything)
 
 // ---------------- Sampling and filtering ----------------
 const unsigned long SAMPLE_MS = 40;     // 25 Hz
@@ -56,22 +54,13 @@ const float POSITION_FILTER = 0.5;      // 0..1, higher = less smoothing
 const float VELOCITY_FILTER = 0.35;
 
 // ---------------- Controller gains (servo deg per cm, per cm/s, per cm*s) --------
+// kick = constant friction push (deg) toward the centre whenever |error| > 0.5 cm, same for all modes
 //                     Kp     Kd     Ki    kick
-float GAIN_P[4]   = {2.5,   0.0,   0.0,  7.0};
-float GAIN_PD[4]  = {4.0,   2.1,   0.0,  7.0};
-float GAIN_PID[4] = {4.0,   2.1,   0.8,  7.0};
+float GAIN_P[4]   = {2.5,   0.0,   0.0,  4.0};
+float GAIN_PD[4]  = {1.0,   0.7,   0.0,  6.0};   // lowered: the rig has ~70 ms of lag (servo + sensor)
+float GAIN_PID[4] = {1.0,   0.7,   0.2,  6.0};   // same Kp, Kd as PD, plus a small Ki
 
-// ---------------- Friction handling ----------------
-const float STALL_ERROR_CM  = 1.0;      // car is away from the centre...
-const float STALL_SPEED_CMS = 1.0;      // ...and not moving -> apply at least "kick" degrees
-const float HOLD_ERROR_CM   = 0.7;      // close enough and still -> hold the beam steady
-const float HOLD_SPEED_CMS  = 1.0;
-const float I_ZONE_CM       = 6.0;      // integrate only within 6 cm of the centre
-
-// ---------------- End recovery ----------------
-const float NEAR_END_CM   = 6.0;        // car almost at the sensor end
-const float FAR_END_CM    = 34.0;       // car almost at the far end
-const float RECOVERY_DEG  = 15.0;
+const float INT_LIMIT = 15.0;           // limit on the integral of error (cm*s)
 
 // ---------------- Modes and state ----------------
 enum ControllerMode { P_MODE, PD_MODE, PID_MODE };
@@ -264,7 +253,7 @@ void setup() {
   for (byte i = 0; i < 3; i++) { float r = readOnceCm(); buf[i] = (r > 0) ? r : centreCm; delay(30); }
 
   Serial.println("# ES245 Task 4: car-on-beam stability test (ultrasonic, Setup 5)");
-  Serial.println("# Target: centre of the beam. Stable = within +/-2 cm and slower than 2 cm/s for 3 s.");
+  Serial.println("# Target: centre of the beam. Runs until you type STOP. Settling is only reported, never forced.");
   Serial.println("# Put the car near the sensor end, type P, PD or PID, then START.");
   showSettings();
 }
@@ -305,63 +294,41 @@ void loop() {
   float past = -startSide * error;       // > 0 when the car is beyond the centre
   if (past > peakOvershootCm) peakOvershootCm = past;
 
-  // 3) Stability check: inside the band AND nearly still, continuously for 3 s
+  // 3) Stability is only MEASURED here, never forced. The controller keeps running.
+  //    Settled = within +/-2 cm of the centre and slower than 2 cm/s for 3 s in a row.
   bool inStableBand = fabs(error) <= STABLE_BAND_CM && fabs(slowSpeedCms) < STABLE_SPEED_CMS;
   if (inStableBand) {
     if (stableSinceMs == 0) stableSinceMs = now;
-    if (now - stableSinceMs >= STABLE_HOLD_MS) {
+    if (now - stableSinceMs >= STABLE_HOLD_MS && settleTimeS < 0) {
       settleTimeS = (stableSinceMs - runStartMs) / 1000.0;
-      setServoOffset(0);
-      logCSV(now, rawCm, "STABLE");
-      running = false;
-      integralError = 0;
-      Serial.print("# STABLE: position="); Serial.print(positionCm, 2);
-      Serial.print(" cm, error="); Serial.print(error, 2);
-      Serial.println(" cm. Beam levelled.");
-      printSummary("STABLE", now);
-      return;
+      Serial.print("# SETTLED at t = "); Serial.print(settleTimeS, 2);
+      Serial.println(" s (controller still running, type STOP to end)");
     }
   } else {
     stableSinceMs = 0;
+    if (settleTimeS >= 0) { settleTimeS = -1; Serial.println("# left the band again, settling time reset"); }
   }
 
-  if (now - runStartMs > MAX_RUN_MS) {
-    logCSV(now, rawCm, "TIMEOUT");
-    stopController("TIMEOUT");
-    return;
-  }
-
-  // 4) Control law: u = Kp e - Kd v + Ki integral(e)  (derivative on the measurement)
   float* g = gains();
   float kp = g[0], kd = g[1], ki = g[2], kick = g[3];
 
-  // Integral only near the centre, and only if it would not push a saturated output further (anti-windup)
-  float candidateIntegral = integralError;
-  if (ki > 0 && fabs(error) < I_ZONE_CM) candidateIntegral = constrain(integralError + error * dt, -40.0, 40.0);
-  float candidateOutput = kp * error - kd * velocityCms + ki * candidateIntegral;
-  if (fabs(candidateOutput) <= MAX_OFFSET ||
-      (candidateOutput > MAX_OFFSET && error < 0) ||
-      (candidateOutput < -MAX_OFFSET && error > 0)) {
-    integralError = candidateIntegral;
+  // ONE control law for all three controllers (only the gains change):
+  //   u = Kp e - Kd v + Ki integral(e) + friction push toward the centre
+  // Nothing else touches the output, so whatever the car does is the controller's own response.
+  if (ki > 0) {
+    float candidateIntegral = constrain(integralError + error * dt, -INT_LIMIT, INT_LIMIT);
+    float candidateOutput = kp * error - kd * velocityCms + ki * candidateIntegral;
+    // anti-windup: do not keep integrating while the servo is already at its limit in that direction
+    if (fabs(candidateOutput) <= MAX_OFFSET ||
+        (candidateOutput > MAX_OFFSET && error < 0) ||
+        (candidateOutput < -MAX_OFFSET && error > 0)) {
+      integralError = candidateIntegral;
+    }
   }
-
   float output = kp * error - kd * velocityCms + ki * integralError;
+  if (error >  0.5) output += kick;
+  if (error < -0.5) output -= kick;
   output = constrain(output, -MAX_OFFSET, MAX_OFFSET);
-
-  // 5) Friction: if the car is stuck away from the centre, tilt at least "kick" degrees toward it
-  if (fabs(error) > STALL_ERROR_CM && fabs(velocityCms) < STALL_SPEED_CMS) {
-    if (error > 0 && output <  kick) output =  kick;
-    if (error < 0 && output > -kick) output = -kick;
-  }
-
-  // 6) Close to the centre and nearly still: hold the beam (only the integral's trim stays)
-  if (fabs(error) <= HOLD_ERROR_CM && fabs(velocityCms) < HOLD_SPEED_CMS) {
-    output = ki * integralError;
-  }
-
-  // 7) End recovery: if the car reaches an end, tilt firmly back inward
-  if (rawCm <= NEAR_END_CM)      { output =  RECOVERY_DEG; integralError = 0; }
-  else if (rawCm >= FAR_END_CM)  { output = -RECOVERY_DEG; integralError = 0; }
 
   setServoOffset(output);
   if (fabs(servoOffset) > maxOffsetUsed) maxOffsetUsed = fabs(servoOffset);
