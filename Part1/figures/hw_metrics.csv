@@ -1,0 +1,13 @@
+metric,P,PD,PID
+gains (Kp/Kd/Ki/kick),2.5/0/0/4,4/2.1/0/3,4/2.1/0.8/3
+start position (cm),6.52,7.34,7.36
+initial error (cm),15.60,14.78,14.76
+rise time 10-90% (s),0.68,0.72,0.68
+first overshoot past centre (cm),14.86,3.93,1.76
+first overshoot (% of initial error),95.3,26.6,11.9
+settling time into +/-2 cm and staying (s),never,12.6,75.1
+settling time into +/-1 cm and staying (s),never,30.8,78.1
+steady-state error, mean of last 5 s (cm),n/a (still swinging),0.19 +/- 0.22,-0.13 +/- 0.15
+sustained oscillation,7 to 38 cm; period 2.6 s,dies out by about 13 s (period about 1.1 s),about 17 to 28 cm for 75 s; period 1.25 s
+time with servo at +/-30 deg limit (%),45,11,46
+run length (s),31.9,45.8,83.1
