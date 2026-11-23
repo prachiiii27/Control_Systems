@@ -8,7 +8,7 @@ Lab Setup 5, Department of Mechanical Engineering, IIT Gandhinagar.
 | Model | First principles: G(s) = 1.962/s² (m/rad) | Identified from chirp tests: G(s) = 2.591/(s² + 0.4789 s + 0.002551) (cm/deg) |
 | Controllers | P, PD, PID (2DOF, derivative on measurement) | Lead, lag, lead-lag (Tustin, Ts = 40 ms) |
 | Best hardware result | PID, 0.13 cm final error | Lead-lag, 0.09 to 0.43 cm final error |
-| Report | [Part1/report](Part1/report/ES245_Part1_Report.pdf) | [Part2/report](Part2/report/ES245_Part2_Report.pdf) |
+| Report | [Part1/report](Part1/report/ES245_Part1_Report.pdf) | [Part2/report](Part2/report/ES245_Part2_final.pdf) |
 | Video | [youtu.be/amDnMqpV4Dc](https://youtu.be/amDnMqpV4Dc) | [youtu.be/xoJ8jDUoAdQ](https://youtu.be/xoJ8jDUoAdQ) |
 
 ## Team
