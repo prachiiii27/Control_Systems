@@ -1,6 +1,6 @@
 # Part 2: Frequency Domain Analysis and Compensator Design
 
-Final report: [`report/ES245_Part2_Report.pdf`](report/ES245_Part2_Report.pdf) · Assignment: [`task/ES245_Project_Part2_Task.pdf`](task/ES245_Project_Part2_Task.pdf) · Video: https://youtu.be/xoJ8jDUoAdQ
+Final report: [`report/ES245_Part2_final.pdf`](report/ES245_Part2_final.pdf) · Assignment: [`task/ES245_Project_Part2_Task.pdf`](task/ES245_Project_Part2_Task.pdf) · Video: https://youtu.be/xoJ8jDUoAdQ
 
 ## Tasks and what we did
 
