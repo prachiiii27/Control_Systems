@@ -15,7 +15,9 @@ Final report: [`report/ES245_Part2_Report.pdf`](report/ES245_Part2_Report.pdf) �
 
 **Identified plant (Task 5)**
 
-G(s) = 2.591 / (s² + 0.4789 s + 0.002551) cm/deg, 60.6 % fit, about 0.09 s delay
+G(s) = 2.591 / (s² + 0.4789 s + 0.002551) cm/deg, 60.6 % fit on the estimation trial (14 to 47 % on validation), about 0.09 s delay
+
+The chirps only excite 3.5 to 16 rad/s, so the slow drag pole is an extrapolation of the fit rather than a measurement; the lead design (crossover 4 rad/s) is the only one inside the measured band.
 
 **Compensators (Task 7)**
 
@@ -40,6 +42,8 @@ In simulation the lead is slightly better: the lag stage costs about 2.5° of ph
 |---|---|
 | Lead, targets 10 / 22.12 / 35 cm | 4.82 / 1.65 / 0.33 cm (friction stops the car short) |
 | Lead-lag, targets 10 / 22.12 / 35 cm | 0.15 / 0.43 / 0.09 cm |
+
+**Design criteria on the hardware:** overshoot stays under 5 % on every approach (0 to 1.1 %), but no run settles inside the 5 % band within 5 s. Friction stops the car near the target and sensor noise disturbs the 35 cm runs; the report (Section 5.5) explains each run.
 
 On the hardware the lead-lag wins: its extra low frequency gain keeps raising the servo angle until friction breaks, so the offset disappears. After a hand push it brought the car back within 1 to 2 s.
 

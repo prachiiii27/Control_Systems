@@ -42,7 +42,7 @@ Dhvani Shah (24110325)\\ Sejal Sharbidre (24110322)\\ Prachi Jindal (24110264)\p
 Department of Mechanical Engineering\\ Indian Institute of Technology Gandhinagar\\ Fall 2026\par
 \vspace{1.5cm}
 \begin{minipage}{0.85\linewidth}
-\textbf{Summary.} We characterised our car on beam setup with four chirp experiments and identified its transfer function, $G(s) = 2.591/(s^2 + 0.4789\,s + 0.002551)$ cm/deg, with a 60.6\,\% fit. Root locus, Nyquist and Bode analysis showed a stable but poorly damped loop (phase margin 16.9 deg, 62\,\% overshoot, 12 s settling). A lead compensator with a prefilter raised the phase margin to 61.7 deg and met both specifications in simulation (0\,\% overshoot, 2.1 s settling with the measured delay). On the hardware the lead moved the car to the target in about 2 s, but wheel friction left a 1.7 to 4.8 cm offset. Adding a lag stage (lead-lag) removed that offset (final error 0.09 to 0.43 cm). Where friction held the car, a light push by hand freed it, and the controller brought it back to the target within about 1 to 2 s.
+\textbf{Summary.} We characterised our car on beam setup with four chirp experiments and identified its transfer function, $G(s) = 2.591/(s^2 + 0.4789\,s + 0.002551)$ cm/deg, with a 60.6\,\% fit on the estimation trial and 14 to 47\,\% on the three validation trials. Root locus, Nyquist and Bode analysis showed a stable but poorly damped loop (phase margin 16.9 deg, 62\,\% overshoot, 12 s settling). A lead compensator with a prefilter raised the phase margin to 61.7 deg and met both specifications in simulation (0\,\% overshoot, 2.1 s settling with the measured delay). On the hardware the lead moved the car to the target in about 2 s, but wheel friction left a 1.7 to 4.8 cm offset. Adding a lag stage (lead-lag) removed that offset (final error 0.09 to 0.43 cm). Where friction held the car, a light push by hand freed it, and the controller brought it back to the target within about 1 to 2 s. The two design criteria (overshoot under 5\,\%, settling under 5 s) are met in simulation; on the hardware the approach itself has 0 to 1.1\,\% overshoot, but no run settled inside the 5\,\% band within 5 s, because of wheel friction and sensor noise near the track end (Section 5.5).
 \end{minipage}
 \end{titlepage}
 \tableofcontents
@@ -83,17 +83,13 @@ small angles and negligible wheel inertia the car accelerates as a = g
 
 (conversion: 1.962 m/rad x 100 cm/m / 57.3 deg/rad = 3.424). This double
 integrator is the reference we compare the measured model against. Part
-1 also measured two hardware facts used again here: a static friction
-band of about 7 to 9 deg of servo angle in which the car does not move,
+1 also measured two hardware facts used again here: a static friction band of about 7 to 9 deg of servo angle in which the car does not move (measured again here as 6.5 to 12.5 deg, Section 5.3),
 and about 70 ms of servo plus sensor delay.
 
 \hypertarget{task-5-system-characterisation}{%
 \section{Task 5: System
 characterisation}\label{task-5-system-characterisation}}
 
-\emph{What the task asks: excite the setup with a chirp, record the
-response, find the transfer function with n4sid, and analyse its Bode
-plot.}
 
 \hypertarget{the-chirp-signal}{%
 \subsection{The chirp signal}\label{the-chirp-signal}}
@@ -188,8 +184,7 @@ function}\label{how-we-obtained-the-transfer-function}}
 Trial 1 was used for estimation. It has the largest motion (about ten
 times the +/-0.25 cm sensor noise) and the car never reached an end.
 Trials 2 to 4 were kept aside to check the model. All identification was
-done in MATLAB (System Identification Toolbox) with the script
-ES245\_Part2\_Solve.m.
+done in MATLAB (System Identification Toolbox).
 
 \textbf{Step 1: n4sid, as the brief asks.}
 
@@ -210,7 +205,7 @@ sys_n4 = n4sid(dEst, 2, 'Ts', 0, opt);
 Its poles are at -2.6 and -1413.5 rad/s, and its fit to the measured
 data is 0 \% or less (Figure 3). The pole at -1413 rad/s is far above
 157 rad/s, the highest frequency that 20 ms sampling can even represent,
-and the zero has no physical source. With only a narrow band of
+and the zero has no physical source. Its DC gain is also negative, -7721/3623 = -2.13: the model says a positive servo angle moves the car the wrong way, which is physically impossible. With only a narrow band of
 excitation (3.5 to 6.3 rad/s) and noisy data, the unconstrained method
 fitted the noise. We therefore kept the same model order but added what
 we know about the physics.
@@ -349,20 +344,17 @@ the gain and phase measured from each trial (markers).}\label{fig:6}
   checked with an extra 90 ms delay.
 \end{itemize}
 
+\textbf{One caution about the model.} After dropping the first 10 s the chirps only excite 3.5 to 16 rad/s, while both identified poles lie below 0.5 rad/s. Over the measured band our G(s) differs from a pure 2.591/s² by less than 0.1 dB in gain and less than 8 deg in phase (0.08 dB and 7.9 deg at 3.46 rad/s, 0.004 dB and 1.8 deg at 15.7 rad/s), so the data cannot really separate the two. The damping term is therefore an extrapolation set by the fit, not a measurement. This matters for Task 6: the 16.9 deg phase margin comes entirely from that pole, and the Part 1 double integrator would give 0 deg (Table 3). It matters even more for the lag design at 0.343 rad/s, a decade below any excitation, where the two models differ by 4.6 dB and 55 deg. The lead design at ωc = 4 rad/s is the only one placed inside the measured band, which is another reason we trust it most, and the hardware runs in Section 5.3 confirm it.
+
+
 \hypertarget{task-6-root-locus-nyquist-and-bode-analysis}{%
 \section{Task 6: Root locus, Nyquist and Bode
 analysis}\label{task-6-root-locus-nyquist-and-bode-analysis}}
 
-\emph{What the task asks: plot the root locus and Nyquist diagram of the
-open loop transfer function and discuss stability and robustness; plot
-the Bode diagram and interpret the gain and phase margins; check the
-design criteria (overshoot under 5 \%, settling under 5 s) on the
-uncompensated loop.}
 
 The loop studied is a proportional gain K in unity feedback around G(s):
 the servo angle is K times the position error. Each plot was made with
-and without the 90 ms delay (a third order Pade approximation in
-MATLAB).
+and without the 90 ms delay (a third order Padé approximation in MATLAB, which replaces the delay with an ordinary transfer function of poles and zeros, because root locus and step plots can only use poles and zeros).
 
 \hypertarget{root-locus}{%
 \subsection{Root locus}\label{root-locus}}
@@ -538,10 +530,6 @@ About 50 deg of extra phase is needed near the crossover frequency.
 \section{Task 7: Lead or lag
 compensator}\label{task-7-lead-or-lag-compensator}}
 
-\emph{What the task asks: from the frequency domain results, identify
-and design the required lead or lag compensator for the desired
-transient and steady state performance, and verify the improvement with
-Bode plots and step responses.}
 
 \hypertarget{lead-or-lag}{%
 \subsection{Lead or lag?}\label{lead-or-lag}}
@@ -573,8 +561,7 @@ Bode plots and step responses.}
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  Choose the crossover ωc = 4 rad/s. It is well above the ζωn
-  \textgreater{} 0.6 limit, high enough for the gain to fight friction
+  Choose the crossover ωc = 4 rad/s. The resulting dominant closed loop pole at -1.73 clears the ζωn \textgreater{} 0.6 requirement with margin; the crossover is also high enough for the gain to fight friction
   on the hardware, and low enough that the 90 ms delay only costs ωc Td
   = 21 deg.
 \item
@@ -612,9 +599,7 @@ Bode plots and step responses.}
 the left half plane.}\label{fig:13}
 \end{figure}
 
-With the lead the closed loop poles move from -0.24 ± 1.59j to -5.70 ±
-2.19j and -1.73. The dominant real part is about 24 times further left,
-so settling drops from 12.2 s to about 2 s while the damping rises.
+With the lead the closed loop poles move from -0.24 ± 1.59j to -5.70 ± 2.21j and -1.73. The slowest pole now sits at -1.73 instead of -0.24, about 7 times further left, so the 5 \% settling time drops from 12.2 s to roughly 3/1.73 = 1.7 s (2.1 s in simulation once the 90 ms delay is included) while the damping rises.
 
 \hypertarget{lag-design}{%
 \subsection{Lag design}\label{lag-design}}
@@ -690,9 +675,7 @@ Lead-lag + prefilter & 59.2 deg at 4.0 rad/s & 38.5 deg / 2.83 & 0.4 \%
 \begin{itemize}
 \tightlist
 \item
-  The lag alone cannot meet the specifications: it buys phase margin
-  only by making the loop about 12 times slower, and its gain of 0.08
-  deg/cm is far too small to overcome friction on the hardware.
+  The lag alone cannot meet the specifications: it buys phase margin only by making the loop about 12 times slower. It is also weak against friction. Its steady state gain is 1.0 deg/cm (0.0774 x 0.0343/0.00265) against the lead's 1.97 deg/cm, so a 3 cm error settles at only 3 deg of servo command, well inside the measured 6.5 to 12.5 deg friction band. Its high frequency gain of 0.077 deg/cm also means it cannot react quickly to a disturbance.
 \item
   The lead meets both specifications with margin to spare. It is the
   compensator required by the frequency domain analysis.
@@ -701,6 +684,9 @@ Lead-lag + prefilter & 59.2 deg at 4.0 rad/s & 38.5 deg / 2.83 & 0.4 \%
   and multiplies the low frequency gain by 10. It was taken to the
   hardware alongside the lead to deal with friction.
 \end{itemize}
+
+
+\textbf{Steady state performance.} The identified G(s) is Type 0 with a static gain G(0) = 2.591/0.002551 = 1016 cm/deg, so for a step the error is $e_{ss}$ = 1/(1 + C(0)G(0)): 1/(1 + 1016) = 0.10 \% without a compensator, 1/(1 + 1.966 x 1016) = 0.05 \% with the lead, and 1/(1 + 19.66 x 1016) = 0.005 \% with the lead-lag (the prefilter has unity DC gain, so it does not change these). If the drag pole is not real (Section 2.6) the plant is a double integrator and the error is exactly zero. Either way the steady state requirement is met by the linear design; what limits the final accuracy on the hardware is friction, which is why the extra low frequency gain of the lag stage was still worth taking to the rig.
 
 \hypertarget{why-the-lead-looks-better-than-the-lead-lag-here}{%
 \subsection{Why the lead looks better than the lead-lag
@@ -732,8 +718,7 @@ the plain lead is the cleaner design. There are three reasons.
 \end{enumerate}
 
 On the hardware the third point changes everything. Friction held the
-car 1.7 to 4.8 cm short with the lead alone, and the extra low frequency
-gain of the lag stage kept building the servo angle until the car moved,
+car 1.7 to 4.8 cm short with the lead alone, and the lag stage raised the low frequency gain 10 times. It is not a true integrator (its DC gain is finite), but its 50 s time constant is longer than our 40 s runs, so its command was still rising while the car was stuck, until it moved,
 bringing the error down to 0.09 to 0.43 cm (Section 5.3). So the lead is
 the best design on the ideal model, and the lead-lag is the best
 controller for the real setup.
@@ -742,9 +727,8 @@ controller for the real setup.
 \section{Task 8: Hardware
 implementation}\label{task-8-hardware-implementation}}
 
-\emph{What the task asks: implement and tune the designed controllers on
-the hardware, and demonstrate stable control and the response to small
-perturbations.}
+
+\paragraph{Hardware video.} The lead and lead-lag runs, including the hand pushes and the servo jitter near the track end, can be seen here: \url{https://youtu.be/xoJ8jDUoAdQ}
 
 \hypertarget{from-s-domain-to-arduino-code}{%
 \subsection{From s-domain to Arduino
@@ -814,8 +798,7 @@ servo 11, level 90 deg) and does the following every 40 ms:
 \end{enumerate}
 
 Serial commands: 1, 2 or 3 choose lead, lag or lead-lag; T x sets the
-target to x cm (allowed 8 to 36 cm); S starts and X stops. The control
-loop is listed in Appendix B.
+target to x cm (allowed 8 to 36 cm); S starts and X stops. The control loop is listed in Appendix B (abridged to the lead and lead-lag branches used on the hardware).
 
 \hypertarget{test-procedure}{%
 \subsection{Test procedure}\label{test-procedure}}
@@ -826,14 +809,12 @@ target was set and the run started. Targets of 10 cm (near the sensor),
 tested. In some runs friction held the car still away from the target;
 it was then given a light push by hand to free it. Each push also acts
 as a perturbation, so these moments show how the loop recovers. The lag
-only mode was not recorded on the hardware; with a gain of 0.08 deg/cm
-it cannot overcome the friction band, as predicted in Section 4.5.
+only mode was not recorded on the hardware; with a steady state gain of only 1.0 deg/cm it cannot overcome the friction band, as predicted in Section 4.5.
 
 \hypertarget{results}{%
 \subsection{Results}\label{results}}
 
-\textbf{Table 7: Hardware results (final error = target minus rest
-position; positive means the car stopped short)}
+\textbf{Table 7: Hardware results. Final error = target minus rest position. The car stopped short of the target in both lead runs (T = 10 and T = 22.12) and rested just past it in the two 35 cm runs, which are against the end stop.}
 
 \begin{longtable}[]{@{}
   >{\raggedright\arraybackslash}p{(\columnwidth - 12\tabcolsep) * \real{0.1429}}
@@ -865,10 +846,10 @@ Servo at rest (deg)
 \endlastfoot
 Simulation (lead, any target) & & 1.3 & 0 \% & = target & 0 & 0 \\
 Lead, T = 10 & 31.7 & did not reach 90 \% & 0 & 14.82 & -4.82 & -12.5 \\
-Lead, T = 22.12 & 7.6 & 4.4 & 0 & 20.47 & +1.65 & +6.5 \\
+Lead, T = 22.12 & 7.6 & did not reach 90 \% & 0 & 20.47 & +1.65 & +6.5 \\
 Lead, T = 35 & 6.7 & 1.84 & reading spikes & 35.33 after 38 s & -0.33 &
 -0.7 \\
-Lead-lag, T = 10 & 39.8 & 1.12 & 0.33 cm (1.1 \%) & 10.15 & -0.15 &
+Lead-lag, T = 10 & 39.8 & 1.12 & 0 on approach (one reading 0.33 cm past, 1.1 \%) & 10.15 & -0.15 &
 -0.6 \\
 Lead-lag, T = 22.12 & 35.3 & see text & 2.1 cm after push & 22.55 &
 -0.43 & -1.8 \\
@@ -897,8 +878,7 @@ friction of the wheels, so the car never moved again.
 
 \textbf{Target 10 cm, lead-lag (blue).}
 
-From 39.8 cm the car reached the target region in 1.2 s with only 0.33
-cm (1.1 \%) of overshoot, very close to the simulated curve. It then
+From 39.8 cm the car reached the target region in 1.2 s without overshooting on the approach, very close to the simulated curve; the closest it came past the target was a single reading of 9.67 cm (0.33 cm, 1.1 \%) at 8.6 s, during the hunting described next. It then
 hunted gently between 10 and 12 cm: every time it stopped, the lag stage
 slowly increased the command (its pole at 0.02 rad/s has a 50 s time
 constant) until the car broke free and moved a little. Friction kept
@@ -924,9 +904,7 @@ Starting at 7.6 cm, the car stayed still for 0.7 s while the command
 rose to the servo limit (static friction must be overcome first), then
 rolled to 19 to 20 cm in about 1.4 s and stopped short of the target. It
 rested at 20.47 cm with +6.5 deg of command (1.966 x 1.65 + 3 = 6.2
-deg): again inside the friction band, so a 1.65 cm offset remained. The
-rise time of 4.4 s in Table 7 is long only because the 90 \% level (20.7
-cm) lies above where friction stopped the car; the motion itself took
+deg): again inside the friction band, so a 1.65 cm offset remained. No rise time is given in Table 7 because the 90 \% level (20.7 cm) lies above where friction stopped the car; the motion itself took
 about 1.5 s, as simulated. The stuck commands of the two lead runs (+6.5
 and -12.5 deg) give a direct measurement of the friction band: the car
 stays put for commands of at least 6.5 deg in one direction and 12.5 deg
@@ -938,7 +916,7 @@ deg or that the friction varies along the track.
 From 35.3 cm the car moved to about 26 cm and then stayed near 25 to 26
 cm for about 10 s, even though the command was between -15 and -25 deg
 and slowly growing (the lag stage at work). That angle is well beyond
-the usual 7 to 9 deg friction band, so the wheel was caught by friction
+the 6.5 to 12.5 deg friction band measured from the lead runs, so the wheel was caught by friction
 at that spot of the track. At about 15.9 s the car was pushed by hand to
 free it; it moved quickly towards the sensor while the command was
 strongly positive, which confirms the push. It ran on to 12 cm, the
@@ -992,10 +970,42 @@ hardware}\label{simulation-against-hardware}}
   band. The linear model cannot predict this; it is the same dead band
   effect found in Part 1.
 \item
-  The lead-lag removes the offset (0.09 to 0.43 cm final error) because
-  its low frequency gain is 10 times higher and grows slowly with time,
-  so any remaining error eventually produces enough servo angle to move
-  the car.
+  The lead-lag removes the offset (0.09 to 0.43 cm final error) because its low frequency gain is 10 times higher. Its 50 s time constant means the command keeps rising for the whole run while an error remains, so a stuck car eventually receives enough servo angle to move.
+\end{itemize}
+
+\hypertarget{design-criteria-on-the-hardware}{%
+\subsection{Design criteria on the hardware}\label{design-criteria-on-the-hardware}}
+
+The brief sets two criteria: overshoot under 5 \% and settling under 5 s inside a 5 \% band. Both were met in simulation (Table 5). Table 8 checks every hardware run against them. The 5 \% band is 5 \% of the distance from the start to the target (for example 1.09 cm for the 21.7 cm move of Lead, T = 10). Positions were median filtered over 7 samples (0.28 s) to remove single ghost readings before measuring.
+
+\begin{table}[H]\centering\small
+\caption*{\textbf{Table 8: Hardware runs against the design criteria}}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{6.7cm}@{}}
+\toprule
+\textbf{Run} & \textbf{Overshoot (< 5 \%)} & \textbf{Settling, 5 \% band (< 5 s)} & \textbf{Main reason a criterion was missed} \\
+\midrule
+Lead, T = 10 & 0 \% \newline \textbf{met} & never (4.82 cm short, band 1.09 cm) \newline \textbf{not met} & Friction: the rest command Kc e + kick = 12.5 deg lies inside the friction band, and the lead has no growing term to push harder. \\
+Lead, T = 22.12 & 0 \% \newline \textbf{met} & never (1.65 cm short, band 0.73 cm) \newline \textbf{not met} & Same: 6.5 deg of command at rest was not enough to move the car. \\
+Lead, T = 35 & 2.6 \% \newline \textbf{met} & 35 s \newline \textbf{not met} & The car sat 1 to 2 cm short near the track end for about 30 s (friction and the end stop), and ghost readings at long range kept crossing the band. \\
+Lead-lag, T = 10 & 0 \% on approach \newline \textbf{met} & within $\pm$2 cm at 5.5 s, inside the 5 \% band only after the push (31 s) \newline \textbf{not met} & Friction held the car at 10.2 to 12.1 cm; the lag command rises with a 50 s time constant, too slowly to break free within 5 s. \\
+Lead-lag, T = 22.12 & 0 \% before the push, 1.8 cm after it \newline \textbf{met} & never before the push; within $\pm$1 cm 2.3 s after it \newline \textbf{not met} & A friction spot held the car at 25 to 26 cm against -15 to -25 deg of command, far beyond the usual band. \\
+Lead-lag, T = 35 & 6.2 \% \newline \textbf{not met} & 13 s \newline \textbf{not met} & The target is at the track end (34.5 cm). Ghost readings of 36 to 37 cm, past the physical end, are multiplied by the lead's high frequency gain of 19.7 deg/cm into servo chatter that moves the car. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Why the criteria are not met on the hardware, and what that means.}
+\begin{itemize}
+\tightlist
+\item
+  The overshoot criterion is a property of the linear loop, and it holds: on every approach the overshoot was 0 to 1.1 \%, as in the 0 \% simulation. The only run over 5 \% is the 35 cm target, where the ``overshoot'' is mostly sensor noise at the end stop, not motion.
+\item
+  The settling criterion fails for a reason the linear model does not contain. Settling needs the car to move the last few millimetres, and near the target the controller command is small. Whenever that command is inside the 6.5 to 12.5 deg friction band the car does not move at all, so it can stay outside a 0.7 to 1.4 cm band indefinitely. The lead has no way to increase its command; the lead-lag does, but only on its 50 s time scale.
+\item
+  The motion that the linear design controls is on time: in every run that friction did not stop early, the car covered 90 \% of the move in 1.1 to 1.8 s (rise times in Table 7), well inside 5 s. What takes longer is the final creep against friction.
+\item
+  Meeting the 5 s settling on this rig would need changes outside a linear lead or lag design: friction compensation sized to the measured band (a larger kick, or a small dither), a true integrator with anti-windup in place of the slow lag stage, a median filter on the sensor, and targets kept at least 2 cm from the track ends.
 \end{itemize}
 
 \hypertarget{response-to-the-hand-pushes-perturbations}{%
@@ -1031,7 +1041,7 @@ which is the behaviour Task 8 asks to demonstrate.
 \begin{itemize}
 \tightlist
 \item
-  Friction: the dead band of roughly ±8 to 12 deg of servo is the main
+  Friction: the dead band of 6.5 to 12.5 deg of servo, measured directly from the two stuck lead runs, is the main
   source of error with the lead. At some spots on the track it held the
   car even against larger commands, and a push by hand was needed to
   free it.
@@ -1056,7 +1066,7 @@ which is the behaviour Task 8 asks to demonstrate.
 \item
   Four chirp experiments, cleaned and analysed in MATLAB, gave the
   transfer function G(s) = 2.591/(s² + 0.4789 s + 0.002551) cm/deg with
-  a 60.6 \% fit. Unconstrained n4sid fitted noise; imposing the physical
+  a 60.6 \% fit on the estimation trial (14 to 47 \% on validation). Unconstrained n4sid fitted noise; imposing the physical
   structure (two poles, no zero) gave a model close to the Part 1 double
   integrator with 76 \% of its gain, a slow drag pole, and about 0.1 s
   of delay seen in the measured phase.
@@ -1075,8 +1085,9 @@ which is the behaviour Task 8 asks to demonstrate.
   1.5 to 2 s, matching the simulation, but friction left a 1.7 to 4.8 cm
   offset. The lead-lag removed that offset (0.09 to 0.43 cm). Where
   friction held the car a light push by hand freed it, and the loop
-  returned the car to the target within 1 to 2 s, so the lead-lag is the
-  best controller for this setup.
+  returned the car to the target within 1 to 2 s, so the lead-lag is the best controller for this setup.
+\item
+  The design criteria are met in simulation (lead: 0 \% overshoot, 2.1 s; lead-lag: 0.4 \%, 1.9 s). On the hardware the overshoot criterion holds on the approach (0 to 1.1 \%) but the 5 s settling criterion is not met in any run: friction stops the car inside the 5 \% band only slowly or not at all, and sensor noise disturbs the runs near the track end (Section 5.5). Friction compensation and an integrator with anti-windup would be the next step.
 \end{itemize}
 
 \hypertarget{matlab-script-es245_part2_solve.m-main-steps}{%
@@ -1113,6 +1124,7 @@ Cd = c2d(C, 0.04, 'tustin')                   % coefficients for the Arduino
 (ES245\_LeadLag\_Target.ino)}\label{arduino-control-loop-es245_leadlag_target.ino}}
 
 \begin{lstlisting}
+// abridged: lead (mode 1) and lead-lag (mode 3) branches; the full sketch also has lag only (mode 2)
 // first order section: y[k] = b0*x[k] + b1*x[k-1] + a1*y[k-1], limited to +/-30 deg
 Stage lead = {16.0876, -15.2938, 0.596204, 0, 0};
 Stage lag2 = {1.003599, -0.995602, 0.999200, 0, 0};
